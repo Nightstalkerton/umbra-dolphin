@@ -217,6 +217,8 @@ add_library(core
   HW/EXI/EXI_DeviceMemoryCard.h
   HW/EXI/EXI_DeviceModem.cpp
   HW/EXI/EXI_DeviceModem.h
+  HW/EXI/EXI_DeviceUmbra.cpp
+  HW/EXI/EXI_DeviceUmbra.h
   HW/EXI/EXI.cpp
   HW/EXI/EXI.h
   HW/GBAPad.cpp
