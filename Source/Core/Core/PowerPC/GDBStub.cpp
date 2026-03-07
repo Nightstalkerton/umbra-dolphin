@@ -985,6 +985,11 @@ void ProcessCommands(bool loop_until_continue)
     case '?':
       SendSignal(Signal::Sigterm);
       break;
+    case 'D':
+      SendReply("OK");
+      Deinit();
+      INFO_LOG_FMT(GDB_STUB, "detached by gdb");
+      return;
     case 'k':
       Deinit();
       INFO_LOG_FMT(GDB_STUB, "killed by gdb");
@@ -1116,6 +1121,7 @@ static void InitGeneric(int domain, const sockaddr* server_addr, socklen_t serve
   s_update_event = core_timing.RegisterEvent("GDBStubUpdate", UpdateCallback);
   core_timing.ScheduleEvent(GDB_UPDATE_CYCLES, s_update_event);
   s_has_control = true;
+  system.GetCPU().SetStepping(true);
 }
 
 void Deinit()

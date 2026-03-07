@@ -1,0 +1,117 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux-x86_64
+            os: ubuntu-24.04
+          - name: Windows-x86_64
+            os: windows-latest
+          - name: macOS-ARM
+            os: macos-14
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── Linux deps ──
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build pkg-config \
+            qt6-base-dev qt6-svg-dev \
+            libx11-dev libxrandr-dev libxi-dev \
+            libegl-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libevdev-dev \
+            libudev-dev \
+            libusb-1.0-0-dev \
+            libsystemd-dev \
+            libbluetooth-dev \
+            libcurl4-openssl-dev \
+            libhidapi-dev \
+            libfmt-dev \
+            libminiupnpc-dev \
+            libmbedtls-dev \
+            libsfml-dev \
+            libxkbcommon-dev
+
+      # ── macOS deps ──
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja pkg-config
+
+      # ── Windows MSVC setup ──
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ── Configure ──
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_QT=ON \
+            -DLINUX_LOCAL_DEV=ON \
+            -DENABLE_AUTOUPDATE=OFF
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_AUTOUPDATE=OFF \
+            -DMACOS_CODE_SIGNING=OFF
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DENABLE_AUTOUPDATE=OFF
+
+      # ── Build ──
+      - name: Build
+        run: cmake --build build --parallel
+
+      # ── Upload artifacts ──
+      - name: Upload artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dolphin-${{ matrix.name }}
+          path: build/Binaries/
+
+      - name: Upload artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dolphin-${{ matrix.name }}
+          path: build/Binaries/
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dolphin-${{ matrix.name }}
+          path: build/Binary/x64/

@@ -48,6 +48,7 @@ private:
     CMD_NET_STATE_WRITE = 0x07,
     CMD_NET_STATE_READ = 0x08,
     CMD_NET_DISCONNECT = 0x09,
+    CMD_GDB_START = 0x0A,
   };
 
   // Status codes returned to PPC — must match tp_nintendont/kernel/umbra.h

@@ -25,6 +25,7 @@ using socket_t = int;
 #include "Common/IOFile.h"
 #include "Common/Logging/Log.h"
 #include "Core/HW/Memmap.h"
+#include "Core/PowerPC/GDBStub.h"
 #include "Core/System.h"
 
 namespace ExpansionInterface
@@ -125,6 +126,17 @@ void CEXIUmbra::DMAWrite(u32 address, u32 size)
     m_last_status = NetDisconnect();
     break;
 
+  case CMD_GDB_START:
+  {
+    u16 port = payload_len >= 2 ? static_cast<u16>((payload[0] << 8) | payload[1]) : 0;
+    if (!port)
+      port = 2159;
+    INFO_LOG_FMT(EXPANSIONINTERFACE, "Umbra: CMD_GDB_START port={}", port);
+    GDBStub::Init(port);
+    m_last_status = STATUS_OK;
+    break;
+  }
+
   default:
     WARN_LOG_FMT(EXPANSIONINTERFACE, "Umbra: unknown cmd {:#04x}", cmd);
     break;
@@ -203,6 +215,7 @@ void CEXIUmbra::DMARead(u32 address, u32 size)
   case CMD_NET_CONNECT:
   case CMD_NET_DISCONNECT:
   case CMD_NET_STATE_WRITE:
+  case CMD_GDB_START:
   {
     // Return [4B status]
     if (size >= 4)
