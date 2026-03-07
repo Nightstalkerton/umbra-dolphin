@@ -662,7 +662,6 @@ PUBLIC
   inputcommon
   MbedTLS::mbedtls
   pugixml
-  RangeSet::RangeSet
   sfml-network
   videonull
   videoogl
