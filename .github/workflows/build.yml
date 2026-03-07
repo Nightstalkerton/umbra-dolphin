@@ -51,12 +51,13 @@ jobs:
             libminiupnpc-dev \
             libmbedtls-dev \
             libsfml-dev \
-            libxkbcommon-dev
+            libxkbcommon-dev \
+            qt6-base-private-dev
 
       # ── macOS deps ──
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install cmake ninja pkg-config
+        run: brew install cmake ninja pkg-config qt@6
 
       # ── Windows MSVC setup ──
       - name: Setup MSVC
@@ -81,7 +82,8 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_AUTOUPDATE=OFF \
-            -DMACOS_CODE_SIGNING=OFF
+            -DMACOS_CODE_SIGNING=OFF \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
@@ -114,4 +116,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dolphin-${{ matrix.name }}
-          path: build/Binary/x64/
+          path: Binary/x64/
