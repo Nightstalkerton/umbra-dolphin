@@ -25,6 +25,7 @@ typedef SSIZE_T ssize_t;
 #include "Common/Assert.h"
 #include "Common/Logging/Log.h"
 #include "Common/SocketContext.h"
+#include "Core/Config/MainSettings.h"
 #include "Core/Core.h"
 #include "Core/HW/CPU.h"
 #include "Core/HW/Memmap.h"
@@ -1115,6 +1116,14 @@ static void InitGeneric(int domain, const sockaddr* server_addr, socklen_t serve
   close(s_tmpsock);
 #endif
   s_tmpsock = -1;
+
+  // Enable debugging mode so the JIT generates breakpoint check code.
+  // Without this, Z0 breakpoints are stored but never evaluated.
+  if (!Config::IsDebuggingEnabled())
+  {
+    Config::SetCurrent(Config::MAIN_ENABLE_DEBUGGING, true);
+    INFO_LOG_FMT(GDB_STUB, "Enabled debugging mode for JIT breakpoint support");
+  }
 
   auto& system = Core::System::GetInstance();
   auto& core_timing = system.GetCoreTiming();
