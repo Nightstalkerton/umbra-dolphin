@@ -16,6 +16,7 @@ typedef SSIZE_T ssize_t;
 #define SHUT_RDWR SD_BOTH
 #else
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -67,6 +68,7 @@ const s64 GDB_UPDATE_CYCLES = 100000;
 
 static bool s_has_control = false;
 static bool s_just_connected = false;
+static bool s_no_ack_mode = false;
 
 static int s_tmpsock = -1;
 static int s_sock = -1;
@@ -212,7 +214,6 @@ static void ReadCommand()
   {
     auto& system = Core::System::GetInstance();
     system.GetCPU().Break();
-    SendSignal(Signal::Sigtrap);
     s_has_control = true;
     INFO_LOG_FMT(GDB_STUB, "gdb: CPU::Break due to break command");
     return;
@@ -246,13 +247,15 @@ static void ReadCommand()
                   chk_calc, chk_read, CommandBufferAsString(), s_cmd_len);
     s_cmd_len = 0;
 
-    Nack();
+    if (!s_no_ack_mode)
+      Nack();
     return;
   }
 
   DEBUG_LOG_FMT(GDB_STUB, "gdb: read command {} with a length of {}: {}",
                 static_cast<char>(s_cmd_bfr[0]), s_cmd_len, CommandBufferAsString());
-  Ack();
+  if (!s_no_ack_mode)
+    Ack();
 }
 
 static bool IsDataAvailable()
@@ -264,7 +267,7 @@ static bool IsDataAvailable()
   FD_SET(s_sock, fds);
 
   t.tv_sec = 0;
-  t.tv_usec = 20;
+  t.tv_usec = 0;
 
   if (select(s_sock + 1, fds, nullptr, nullptr, &t) < 0)
   {
@@ -340,7 +343,7 @@ static void HandleQuery()
   else if (!strncmp((const char*)(s_cmd_bfr), "qHostInfo", strlen("qHostInfo")))
     return WriteHostInfo();
   else if (!strncmp((const char*)(s_cmd_bfr), "qSupported", strlen("qSupported")))
-    return SendReply("swbreak+;hwbreak+");
+    return SendReply("swbreak+;hwbreak+;QStartNoAckMode+");
 
   SendReply("");
 }
@@ -974,6 +977,18 @@ void ProcessCommands(bool loop_until_continue)
 
     switch (s_cmd_bfr[0])
     {
+    case 'Q':
+      if (!strcmp((const char*)(s_cmd_bfr), "QStartNoAckMode"))
+      {
+        SendReply("OK");
+        s_no_ack_mode = true;
+        INFO_LOG_FMT(GDB_STUB, "gdb: no-ack mode enabled");
+      }
+      else
+      {
+        SendReply("");
+      }
+      break;
     case 'q':
       HandleQuery();
       break;
@@ -1107,6 +1122,10 @@ static void InitGeneric(int domain, const sockaddr* server_addr, socklen_t serve
   s_sock = accept(s_tmpsock, client_addr, client_addrlen);
   if (s_sock < 0)
     ERROR_LOG_FMT(GDB_STUB, "Failed to accept gdb client");
+
+  int nodelay = 1;
+  setsockopt(s_sock, IPPROTO_TCP, TCP_NODELAY, (const char*)&nodelay, sizeof(nodelay));
+
   INFO_LOG_FMT(GDB_STUB, "Client connected.");
   s_just_connected = true;
 
@@ -1148,6 +1167,7 @@ void Deinit()
 
   s_socket_context.reset();
   s_has_control = false;
+  s_no_ack_mode = false;
 }
 
 bool IsActive()
